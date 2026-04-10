@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBTI 搞怪人格测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .tag-H { background-color: #10b981; color: white; }
+        .tag-M { background-color: #f59e0b; color: white; }
+        .tag-L { background-color: #ef4444; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <!-- 开场页面 -->
+    <div id="start-screen" class="max-w-md mx-auto px-4 py-16">
+        <div class="bg-white rounded-2xl shadow-lg p-8 text-center fade-in">
+            <h1 class="text-4xl font-bold text-orange-600 mb-6">来不及为SBTI进行祷告了，接下来迎接你们的是NBTI</h1>
+            <p class="text-gray-600 mb-8">请凭第一直觉答题，深思熟虑的结果不算数哦</p>
+            <button onclick="startQuiz()" class="bg-orange-500 hover:bg-orange-600 text-white font-medium px-8 py-3 rounded-full transition-all hover:scale-105 active:scale-95">
+                开始测试
+            </button>
+        </div>
+    </div>    <!-- 答题页面 -->
+    <div id="quiz-screen" class="max-w-md mx-auto px-4 py-10 hidden">
+        <div class="bg-gray-200 rounded-full h-2 mb-6 overflow-hidden">
+            <div id="progress-bar" class="progress-bar bg-orange-500 h-full w-0"></div>
+        </div>
+        <p class="text-gray-500 text-sm mb-2 text-center" id="question-count">第 1 / 30 题</p>
+        
+        <div class="bg-white rounded-2xl shadow-lg p-6 fade-in" id="question-card">
+            <h2 class="text-xl font-medium text-gray-800 mb-6" id="question-text"></h2>
+            <div class="space-y-3" id="options-container"></div>
+        </div>
+    </div>
+
+    <!-- 结果页面 -->
+    <div id="result-screen" class="max-w-md mx-auto px-4 py-8 hidden">
+        <div class="fade-in">
+            <div class="bg-white rounded-2xl shadow-lg p-6 mb-4">
+                <div class="w-28 h-28 mx-auto bg-orange-50 rounded-full flex items-center justify-center text-6xl mb-4" id="result-avatar">😎</div>
+                
+                <div class="text-center mb-4">
+                    <p class="text-sm text-gray-500 mb-3">你的人格是：</p>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-1" id="result-en-type">CTRL</h1>
+                    <h2 class="text-xl text-orange-600 font-medium" id="result-cn-type">掌控者</h2>
+                    <span class="inline-block bg-orange-100 text-orange-600 text-sm px-3 py-1 rounded-full mt-4" id="result-match">匹配度 92%</span>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-3 mb-4 text-center text-sm text-gray-700 border border-gray-200" id="result-remark">
+                    天塌下来你都能先点个外卖
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-500 mb-2">该人格的简单解读</h3>
+                    <p class="text-gray-700 leading-relaxed text-sm" id="result-desc">
+                        内心有稳定的锚，外界难以动摇；决断清晰知道自己要什么，选店选礼物选方向找你永远靠谱，朋友遇事第一个找你拿主意，主打一个稳稳的幸福。
+                    </p>
+                </div>
+
+                <!-- 5大轴雷达图 -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-500 mb-3">你的属性雷达图</h3>
+                    <canvas id="radar-chart" class="w-full h-60"></canvas>
+                </div>
+
+                <!-- 十五维度详情 -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-500 mb-3">十五维度详情</h3>
+                    <div class="space-y-4" id="dimensions-container"></div>
+                </div>
+
+                <button onclick="restart()" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium px-8 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-95">
+                    再测一次
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 题目完全不变
+        const questions = [
+            // Z轴 自我内在
+            { 
+                text: "刷到小红书热门帖《2026年年轻人必须拥有的10件奢侈品》，你会？", 
+                dimension: "Z1", 
+                options: [ 
+                    { text: "赶紧对照自己缺啥，马上下单", score: 1 }, 
+                    { text: "看看就过，刚好有需要再考虑", score: 2 }, 
+                    { text: "我需要啥我自己清楚，这种帖子和我无关", score: 3 } 
+                ] 
+            },
+            { 
+                text: "身边朋友都在报999元的「自媒体运营速成班」，说学完月入过万，集体拉你拼单报名，你会？", 
+                dimension: "Z1", 
+                options: [ 
+                    { text: "大家都报肯定能赚钱，我也跟着拼", score: 1 }, 
+                    { text: "先去搜搜评价，靠谱再考虑报不报", score: 2 }, 
+                    { text: "我没这方面需求，你们报吧我就不了", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你熬了三个晚上赶的期末论文/工作方案，最后存盘的时候电脑突然蓝屏，文件全没了，朋友都来安慰你，你会？", 
+                dimension: "Z2", 
+                options: [ 
+                    { text: "反复骂自己为什么不早点备份，emo到饭都吃不下", score: 1 }, 
+                    { text: "难过半天，骂两句破电脑，重新写就是了", score: 2 }, 
+                    { text: "害，正好重写的话还能改改之前不满意的地方，不算亏", score: 3 } 
+                ] 
+            },
+            { 
+                text: "朋友发合照，你觉得自己拍得特别丑，你会？", 
+                dimension: "Z2", 
+                options: [ 
+                    { text: "绝对不让他发，发了也要逼他把你P到完美", score: 1 }, 
+                    { text: "要是P得不过分可以发，不好看就说一声帮我修修脸", score: 2 }, 
+                    { text: "随便发，我长啥样我自己知道，没啥好介意的", score: 3 } 
+                ] 
+            },
+            { 
+                text: "常去的奶茶店出了猎奇新口味（比如香菜珍珠奶茶），你会？", 
+                dimension: "Z3", 
+                options: [ 
+                    { text: "我就喝常点的，新口味肯定难喝", score: 1 }, 
+                    { text: "等身边有人喝了说不错我再试", score: 2 }, 
+                    { text: "马上点一杯尝尝鲜，难喝也认了", score: 3 } 
+                ] 
+            },
+            { 
+                text: "周末你本来计划躺平刷剧，朋友突然喊你去参加本地的「社牛挑战局」，任务包括跟便利店店员对暗号、大街上和陌生人击掌、广场舞队里跳2分钟，全做完全员免单吃火锅，你从来没玩过这么疯的，你会？", 
+                dimension: "Z3", 
+                options: [ 
+                    { text: "不去，太社死了，在家躺着多舒服", score: 1 }, 
+                    { text: "先看看有没有其他认识的人去，人多就去", score: 2 }, 
+                    { text: "走啊！正好试试新玩法，免单火锅香死了", score: 3 } 
+                ] 
+            },
+            // G轴 关系互动
+            { 
+                text: "第一次去对象家吃饭，对象妈妈做的菜特别咸，你会？", 
+                dimension: "G1", 
+                options: [ 
+                    { text: "不敢说，硬塞了三碗饭，吃完嘴都咸到起皮还要夸“阿姨做的饭太好吃了！”", score: 1 }, 
+                    { text: "笑着说“阿姨今天是不是盐罐打翻啦，我去倒杯冰可乐喝”", score: 2 }, 
+                    { text: "直接递过水杯说“阿姨你也尝一口，是不是咸了？我们下次少放点哈”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "和好久没见的朋友约饭，突然两个人沉默没话聊，你会？", 
+                dimension: "G1", 
+                options: [ 
+                    { text: "特别尴尬，疯狂找废话话题救场", score: 1 }, 
+                    { text: "玩会手机，等有话题了再聊", score: 2 }, 
+                    { text: "拿起杯子碰一下说“害，没话说就不说，吃菜！”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "连续加了一周班，累到回家就想哭，你会？", 
+                dimension: "G2", 
+                options: [ 
+                    { text: "憋着不说，朋友问也说“我没事”", score: 1 }, 
+                    { text: "和最好的朋友吐槽两句，但不会说太细", score: 2 }, 
+                    { text: "直接在群里喊“我快累死了谁来请我喝奶茶”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "朋友特别开心地和你分享他中了500块彩票，你会？", 
+                dimension: "G2", 
+                options: [ 
+                    { text: "觉得这有啥好开心的，泼冷水“才500至于吗”", score: 1 }, 
+                    { text: "说“哇运气不错啊”，然后继续做自己的事", score: 2 }, 
+                    { text: "凑过去跟着开心，问他是不是要请客吃顿好的", score: 3 } 
+                ] 
+            },
+            { 
+                text: "刚认识一周的同事，突然问你一个月工资多少，你会？", 
+                dimension: "G3", 
+                options: [ 
+                    { text: "不好意思不回答，如实说了之后又觉得不舒服", score: 1 }, 
+                    { text: "打哈哈说“就够吃饭的钱，你呢”把问题抛回去", score: 2 }, 
+                    { text: "笑着说“哎呀工资可是隐私哦，我可不告诉你～”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "最好的朋友最近谈恋爱了，一周都没找你玩，你会？", 
+                dimension: "G3", 
+                options: [ 
+                    { text: "觉得他重色轻友，天天发消息闹脾气", score: 1 }, 
+                    { text: "不会主动找他，等他有空找你了再玩", score: 2 }, 
+                    { text: "偶尔问一句近况，他有空约就去，没空就自己玩", score: 3 } 
+                ] 
+            },
+            // R轴 认知视角
+            { 
+                text: "网上刷到新闻“男生当街打女生”，评论全在骂男生，你会？", 
+                dimension: "R1", 
+                options: [ 
+                    { text: "男的肯定错了，不管什么原因打女生就是垃圾", score: 1 }, 
+                    { text: "等后续通报，看看前因后果再下判断", score: 2 }, 
+                    { text: "肯定有隐情，没看到完整经过之前不站队", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你以前特别讨厌的明星，突然被曝捐了100万做公益，你会？", 
+                dimension: "R1", 
+                options: [ 
+                    { text: "肯定是作秀洗地，这种人能有什么好心", score: 1 }, 
+                    { text: "虽然他以前的事我不喜欢，但捐钱确实是好事", score: 2 }, 
+                    { text: "人本来就是多面的，坏的要骂，好的也该认", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你拼单的奶茶到了，骑手说他刹车打滑，奶茶撒了一半，要赔钱给你，你会？", 
+                dimension: "R2", 
+                options: [ 
+                    { text: "必须赔，我等了半个多小时呢", score: 1 }, 
+                    { text: "算了算了，你下次注意就行", score: 2 }, 
+                    { text: "你有没有摔疼啊？不用赔我再点一杯就行", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你妈天天给你发「快删！微信这功能会偷你钱」「年轻人必看！不吃早饭会得癌症」的朋友圈，你会？", 
+                dimension: "R2", 
+                options: [ 
+                    { text: "烦死了，直接怼“这都是假的以后别发了”", score: 1 }, 
+                    { text: "假装看到了不回复，下次再发再说", score: 2 }, 
+                    { text: "知道她是关心你，有空就给她科普这些是谣言", score: 3 } 
+                ] 
+            },
+            { 
+                text: "上班摸鱼刷短视频刚好被老板抓包，扣了200块全勤奖，你会？", 
+                dimension: "R3", 
+                options: [ 
+                    { text: "我怎么这么倒霉，今天真是糟透了", score: 1 }, 
+                    { text: "害，下次摸鱼注意躲着点老板就行", score: 2 }, 
+                    { text: "正好提醒我换个更隐蔽的摸鱼姿势，不亏", score: 3 } 
+                ] 
+            },
+            { 
+                text: "谈了三年的对象突然和你分手，你会？", 
+                dimension: "R3", 
+                options: [ 
+                    { text: "我这三年真是喂了狗，一点用都没有", score: 1 }, 
+                    { text: "分都分了，以后好好过自己的日子就行", score: 2 }, 
+                    { text: "至少在一起的时候开心过，也学会了怎么爱人，不算亏", score: 3 } 
+                ] 
+            },
+            // X轴 行动模式
+            { 
+                text: "毕业找工作，爸妈让你去亲戚介绍的朝九晚五国企，你自己想进喜欢的游戏公司做策划，你会？", 
+                dimension: "X1", 
+                options: [ 
+                    { text: "听爸妈的，国企稳定不会错", score: 1 }, 
+                    { text: "两边都面试，哪个面上了去哪个", score: 2 }, 
+                    { text: "去游戏公司，自己喜欢最重要，以后不后悔", score: 3 } 
+                ] 
+            },
+            { 
+                text: "公司组织周末团建爬山，说去的人每人发500块补贴，但你本来约了朋友去看本命演唱会，你会？", 
+                dimension: "X1", 
+                options: [ 
+                    { text: "大家都去还有钱拿，演唱会下次再看", score: 1 }, 
+                    { text: "要是演唱会位置不好就去团建", score: 2 }, 
+                    { text: "演唱会是本命，加钱也不去团建", score: 3 } 
+                ] 
+            },
+            { 
+                text: "中午点外卖，翻了半小时APP，你会？", 
+                dimension: "X2", 
+                options: [ 
+                    { text: "还是不知道吃啥，最后随便选个朋友推荐的", score: 1 }, 
+                    { text: "在常吃的3家里选一个，十分钟搞定", score: 2 }, 
+                    { text: "直接点昨天吃的那家的常点款，两分钟下单", score: 3 } 
+                ] 
+            },
+            { 
+                text: "喝奶茶同时想喝芋泥啵啵和杨枝甘露，价格一样只能点一杯，你会？", 
+                dimension: "X2", 
+                options: [ 
+                    { text: "纠结半小时，问遍朋友意见才敢点", score: 1 }, 
+                    { text: "看今天热量额度，选低一点的", score: 2 }, 
+                    { text: "直接点第一眼想喝的那个", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你本来今天计划写完作业/方案，朋友突然约你去唱K，你会？", 
+                dimension: "X3", 
+                options: [ 
+                    { text: "马上答应，作业/方案明天再说", score: 1 }, 
+                    { text: "和朋友说我先写完一半，晚上再去", score: 2 }, 
+                    { text: "和朋友说我今天有安排，下次再约", score: 3 } 
+                ] 
+            },
+            { 
+                text: "放假在家你计划上午睡觉下午玩，爸妈早上8点就喊你起来吃早饭，你会？", 
+                dimension: "X3", 
+                options: [ 
+                    { text: "没办法，爬起来吃饭，之后一上午都困得要死", score: 1 }, 
+                    { text: "起来吃个早饭，吃完回去接着睡", score: 2 }, 
+                    { text: "和爸妈说我放假想多睡会，你们先吃不用管我，继续睡", score: 3 } 
+                ] 
+            },
+            // S轴 社交存在
+            { 
+                text: "周末参加了几十人的大聚会，回家之后你第一反应是？", 
+                dimension: "S1", 
+                options: [ 
+                    { text: "好累，得自己待两天缓一缓", score: 1 }, 
+                    { text: "还行，不累也不兴奋，该干嘛干嘛", score: 2 }, 
+                    { text: "好开心，下次还要参加，现在还想找人聊天", score: 3 } 
+                ] 
+            },
+            { 
+                text: "你本来打算周末在家躺平，朋友喊你去剧本杀，说有好几个新朋友，你会？", 
+                dimension: "S1", 
+                options: [ 
+                    { text: "不去，见陌生人好累，不如在家躺着", score: 1 }, 
+                    { text: "要是都是认识的人就去，有陌生人就算了", score: 2 }, 
+                    { text: "走啊，正好认识新朋友，多好玩", score: 3 } 
+                ] 
+            },
+            { 
+                text: "开会的时候老板讲了个冷笑话，全场都没人笑，你会？", 
+                dimension: "S2", 
+                options: [ 
+                    { text: "没觉得有啥问题，直接说“这笑话一点都不好笑啊”", score: 1 }, 
+                    { text: "跟着假笑两声凑个热闹", score: 2 }, 
+                    { text: "察觉到老板尴尬，第一个笑出声还接个梗", score: 3 } 
+                ] 
+            },
+            { 
+                text: "朋友发朋友圈秀新做的头发，你觉得特别丑，你会？", 
+                dimension: "S2", 
+                options: [ 
+                    { text: "直接在评论区喊“我的天你这发型也太丑了吧？哪个托尼给你做的避雷！”", score: 1 }, 
+                    { text: "私下发消息问他“你是不是被托尼坑了？这发型不太适合你啊”", score: 2 }, 
+                    { text: "看他配文说“终于做了梦寐以求的头！”，直接评论“太好看了！显脸小！”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "朋友问你有没有看最近爆火的剧，你听都没听过，你会？", 
+                dimension: "S3", 
+                options: [ 
+                    { text: "假装看过，跟着瞎聊，生怕被说落伍", score: 1 }, 
+                    { text: "说我没看，但是听说挺火的，讲啥的啊？", score: 2 }, 
+                    { text: "直接说“我没看，我对这种类型的剧不感兴趣”", score: 3 } 
+                ] 
+            },
+            { 
+                text: "和不太熟的朋友吃饭，你特别想放屁，你会？", 
+                dimension: "S3", 
+                options: [ 
+                    { text: "憋着，憋到脸通红也不敢放，生怕被发现", score: 1 }, 
+                    { text: "悄悄挪到没人的地方放，或者假装去厕所放", score: 2 }, 
+                    { text: "直接说“不好意思啊我放个屁”，说完坦然放", score: 3 } 
+                ] 
+            }
+        ];
+
+        // 人格数据保留原结构，但后续匹配逻辑会大改
+        const personalities = [
+            {
+                id: 1,
+                enName: "CTRL",
+                cnName: "掌控者",
+                emoji: "😎",
+                remark: "天塌下来你都能先点个外卖",
+                desc: "内心有稳定的锚，外界难以动摇；决断清晰知道自己要什么，选店选礼物选方向找你永远靠谱，朋友遇事第一个找你拿主意，主打一个稳稳的幸福。偶尔会显得固执，但那是因为你太清楚自己的底线和目标在哪里了，生活里的小意外从来不会打乱你的节奏。",
+                core: { Z1: "H", X2: "H", S3: "H" }
+            },
+            {
+                id: 2,
+                enName: "QIAN",
+                cnName: "迟早挨揍",
+                emoji: "🤕",
+                remark: "出门建议自带三级头盔",
+                desc: "看世界非黑即白，不会换位思考，说话永远直来直去不绕弯，朋友剪了新发型你第一句就是“丑死了”，主打一个真实到欠揍。不过你的“直”里没有恶意，只是懒得说假话，有时候反而会吸引同样喜欢直来直去的人，就是得小心别得罪太多玻璃心。",
+                core: { R1: "L", R2: "L", S3: "H" }
+            },
+            {
+                id: 3,
+                enName: "NOUS-E",
+                cnName: "墙头草",
+                emoji: "🌪️",
+                remark: "风往哪吹你往哪跑",
+                desc: "内心没锚随波逐流，中午吃啥要问朋友，买啥要刷小红书，别人说啥你信啥，诈骗团伙见了你都要笑开花，主打一个没主意。不过你也有自己的优点：适应能力超强，不管在什么环境里都能快速融入，很少会有焦虑或不安的感觉，毕竟“大家都这样肯定没错”的心态有时候也挺好的。",
+                core: { Z1: "L", X3: "L", G3: "L" }
+            },
+            {
+                id: 4,
+                enName: "IMAM",
+                cnName: "艾慕人",
+                emoji: "🥱",
+                remark: "建议直接躺平别硬撑",
+                desc: "做决定纠结半天，经常跟自己较劲，屁大点事能内耗三天，还总觉得啥都没意义，每天都在“好累”和“再撑撑”之间反复横跳。不过你比谁都温柔敏感，能察觉到别人察觉不到的小情绪，是非常好的倾听者，只是别把所有的错都揽到自己身上哦，你已经很棒啦。",
+                core: { X2: "L", Z2: "L", R3: "L" }
+            },
+            {
+                id: 5,
+                enName: "ALON-E",
+                cnName: "孤儿",
+                emoji: "🏝️",
+                remark: "孤寡是你的保护色",
+                desc: "社交太耗电，读不懂空气，情感流通基本等于0，一个人吃火锅看电影完全不觉得尴尬，甚至觉得比和人一起舒服，主打一个独来独往。不过你内心世界非常丰富，一个人也能过得很精彩，看书、画画、追剧、玩游戏，你的爱好多到数不清，只是不需要别人分享而已。",
+                core: { S1: "L", S2: "L", G2: "L" }
+            },
+            {
+                id: 6,
+                enName: "WAIT",
+                cnName: "拖延癌晚期",
+                emoji: "🐌",
+                remark: "火烧眉毛了？没事，还有睫毛",
+                desc: "节奏永远被打乱，内在动力基本为0，还抗拒改变，做选择还纠结，deadline前1小时效率比老板盯一周还高，火烧到眉毛了还能先玩半小时手机。不过你抗压能力超强，越是紧急的情况越能冷静下来，虽然经常踩点完成，但从来没真正误过事，也是一种特殊的天赋啦。",
+                core: { X3: "L", X1: "L", Z3: "L", X2: "L" }
+            },
+            {
+                id: 7,
+                enName: "IDC",
+                cnName: "究极冷漠之人",
+                emoji: "❄️",
+                remark: "别爱我没结果",
+                desc: "情感流通基本受阻，看世界自带防御buff，社交耗电到极致，别人哭你递纸，别人吐槽你点头，主打一个“关我屁事”“关你屁事”，谁也别想道德绑架你。不过你非常有原则，不会因为人情世故改变自己的想法，也很少会被外界影响情绪，活得特别清醒自在。",
+                core: { G2: "L", R1: "L", S1: "L" }
+            },
+            {
+                id: 8,
+                enName: "DIXK",
+                cnName: "迪克",
+                emoji: "🪨",
+                remark: "头该硬的时候硬，不该硬的时候也硬",
+                desc: "抗拒改变，不会换位思考，节奏永远被打乱，认准的事八头牛都拉不回，撞了南墙都要把墙撞穿，头铁到医生看了都摇头。不过你非常执着，一旦认定了目标就会坚持到底，不会轻易放弃，虽然有时候会显得固执，但这种坚持往往能让你做成别人做不成的事。",
+                core: { Z3: "L", R2: "L", X3: "L" }
+            },
+            {
+                id: 9,
+                enName: "MOUS-E",
+                cnName: "阴沟老鼠",
+                emoji: "🥺",
+                remark: "自卑未敢忘忧幸福",
+                desc: "经常自我否定，关系里容易焦虑，还读不懂空气，别人随便说句话你都要想半天是不是自己的问题，明明很敏感还总想着照顾别人的情绪。不过你非常温柔体贴，能察觉到别人的小情绪，是非常好的朋友，只是别太在意别人的看法，你已经做得很好啦。",
+                core: { Z2: "L", G1: "L", S2: "L" }
+            },
+            {
+                id: 10,
+                enName: "HELL-O",
+                cnName: "热闹人",
+                emoji: "👯",
+                remark: "哪里有热闹哪里就有你",
+                desc: "社交能充电，但内心没锚，节奏还被打乱，街上有人围堆你第一个凑上去，广场舞你能跳两圈，别人吵架你能看半小时，主打一个“来都来了”。不过你非常活泼开朗，能给身边的人带来快乐，不管什么场合只要有你在就不会冷，是大家公认的开心果。",
+                core: { S1: "H", Z1: "L", X3: "L" }
+            },
+            {
+                id: 11,
+                enName: "IFI",
+                cnName: "白日梦想家",
+                emoji: "💭",
+                remark: "晚上想了千条路，早上起来走原路",
+                desc: "内在动力不足，觉得啥都没意义，还抗拒改变，晚上躺床上想明天要健身要搞副业要赚大钱，第二天醒了先刷三小时手机，想法一大堆落地没一个。不过你想象力非常丰富，脑洞大到能装下整个宇宙，是很好的创意来源，要是能把想法落实一点就更好啦。",
+                core: { X1: "L", R3: "L", Z3: "L" }
+            },
+            {
+                id: 12,
+                enName: "CHA-",
+                cnName: "查瓜人",
+                emoji: "🤫",
+                remark: "瓜田里最活跃的猹",
+                desc: "能敏锐感知他人情绪，但看世界非黑即白，社交能充电，谁和谁谈恋爱谁和谁撕逼你第一个知道，手机里8个吃瓜群24小时在线蹲瓜。不过你非常八卦有趣，能给身边的人带来很多茶余饭后的谈资，而且你消息灵通，很多新鲜事你都能第一时间知道。",
+                core: { S2: "H", R1: "L", S1: "H" }
+            },
+            {
+                id: 13,
+                enName: "FLAT",
+                cnName: "躺平人",
+                emoji: "🛌",
+                remark: "万事开头难，怎么中间也难，结尾更难",
+                desc: "节奏被打乱，内在动力不足，还抗拒改变，但是做选择不纠结，老板画饼你直接说“我不吃”，同事卷加班你到点就走，主打一个努力没用不如躺平。不过你心态非常好，很少会有焦虑或不安的感觉，活得特别通透自在，毕竟人生苦短，及时行乐才是最重要的。",
+                core: { X3: "L", X1: "L", Z3: "L" },
+                extraCondition: (dimensions) => dimensions.X2 !== "L"
+            },
+            {
+                id: 14,
+                enName: "CYBE-R",
+                cnName: "赛博宠物",
+                emoji: "⌨️",
+                remark: "网上你重拳出击，现实你唯唯诺诺",
+                desc: "网上表达直接，现实中社交耗电，看世界非黑即白，评论区怼天怼地打字速度比抢红包还快，现实中被人踩一脚都不敢吱声。不过你在网上非常活跃，能找到很多志同道合的朋友，而且你打字快、思维敏捷，是很好的网络伙伴。",
+                core: { S3: "H", S1: "L", R1: "L" }
+            },
+            {
+                id: 15,
+                enName: "JAME-S",
+                cnName: "者也盐沾",
+                emoji: "🎉",
+                remark: "哪里都是你的主场",
+                desc: "关系里松弛自在，社交能充电，情感自然流动，打滴滴能和司机聊一路，第一次去对象家就能和对方爸妈打成一片，全世界都是你亲戚。不过你社交能力超强，不管什么场合都能快速融入，是大家公认的社交达人，而且你情商很高，很少会得罪人。",
+                core: { G1: "H", S1: "H", G2: "H" }
+            },
+            {
+                id: 16,
+                enName: "LEZI",
+                cnName: "乐子",
+                emoji: "✨",
+                remark: "聚会你不来大家都觉得没意思",
+                desc: "内心有定见不慌，在人群里又放得开，既能控场又会接梗，只要你在的场子绝对不会冷，是大家公认的聚会灵魂人物，主打工期就是找乐子。不过你不仅仅是会玩，你还非常靠谱，朋友遇事第一个找你拿主意，你既能给他们带来快乐，又能帮他们解决问题。",
+                core: { Z1: "H", X2: "H", S3: "H", G1: "H", S1: "H", G2: "H" }
+            },
+            {
+                id: 17,
+                enName: "BANA-N",
+                cnName: "青年香蕉",
+                emoji: "🍌",
+                remark: "表达能力不如一根成年香蕉",
+                desc: "看事非黑即白不会拐弯，说话直来直去经常得罪人，线上线下都管不住嘴，说出来的话比香蕉皮还滑还容易让人摔跟头，每天都在挨打的边缘横跳。不过你非常真诚，从来不会说假话，虽然有时候会得罪人，但也能吸引同样喜欢真诚的人，只是得稍微注意一下说话的方式哦。",
+                core: { R1: "L", R2: "L", S3: "H", S1: "L" }
+            },
+            {
+                id: 18,
+                enName: "IMFW",
+                cnName: "废物",
+                emoji: "🐟",
+                remark: "能坐着绝不站着，能躺着绝不坐着",
+                desc: "既没动力又不想改变，节奏常年被外界推着走，能拖的事绝对不早做，能躺平的时候绝对不起来奋斗，主打一个活着就行，当废物真的很快乐。不过你心态超级好，很少会有焦虑或不安的感觉，而且你要求不高，很容易满足，这样的生活其实也挺幸福的。",
+                core: { X3: "L", X1: "L", Z3: "L" }
+            },
+            {
+                id: 19,
+                enName: "CHAA+",
+                cnName: "瓜田猹王",
+                emoji: "🍉",
+                remark: "全村的消息都在你脑子里",
+                desc: "耳听六路眼观八方，谁和谁搞暧昧谁和谁撕逼你第一个知道，哪里有热闹就往哪钻，是朋友圈公认的移动瓜库，八卦传你手里比5G还快。不过你不仅仅是会吃瓜，你还非常会聊天，能把八卦说得绘声绘色，是大家公认的茶余饭后的最佳伙伴。",
+                core: { S2: "H", R1: "L", S1: "H", Z1: "L", X3: "L" }
+            },
+            {
+                id: 20,
+                enName: "MICE",
+                cnName: "究极老鼠人",
+                emoji: "🧊",
+                remark: "微信步数常年不过百，朋友列表凑不满一页",
+                desc: "社交耗电情感闭塞，不爱和人打交道也不想理解别人的弯弯绕绕，常年宅家，看到熟人绕路走，有人约你出门你第一反应是“能不能不去”，主打一个我不找人人也别找我。不过你内心世界非常丰富，一个人也能过得很精彩，看书、画画、追剧、玩游戏，你的爱好多到数不清，只是不需要别人分享而已。",
+                core: { G2: "L", R1: "L", S1: "L", S2: "L" }
+            },
+            {
+                id: 21,
+                enName: "TNT",
+                cnName: "别惹我",
+                emoji: "💥",
+                remark: "上班上到随时要炸掉",
+                desc: "做选择纠结，遇事容易自我否定，搞砸一点事就焦虑半天，上班已经够累了还要应付人际关系，整个人就是个行走的TNT，一点就炸。不过你非常认真负责，做事情从来不会敷衍了事，而且你非常敏感，能察觉到别人的小情绪，只是别把所有的压力都自己扛哦，适当放松一下吧。",
+                core: { X2: "L", Z2: "L", R3: "L", G1: "L", S2: "L" }
+            },
+            {
+                id: 22,
+                enName: "WBT",
+                cnName: "南墙寻找者",
+                emoji: "🤦‍♂️",
+                remark: "我管你叽里呱啦说什么",
+                desc: "满脑子想法但没动力执行，还听不进别人的劝，认定的事八头牛都拉不回，天天幻想一夜暴富但从来不肯迈出第一步，不撞南墙绝不回头。不过你非常有主见，不会因为别人的话改变自己的想法，而且你想象力非常丰富，要是能把想法落实一点就更好啦。",
+                core: { Z3: "L", R2: "L", X3: "L", X1: "L", R3: "L" }
+            },
+            {
+                id: 23,
+                enName: "YML",
+                cnName: "无能的丈夫",
+                emoji: "💨",
+                remark: "别人说啥都信，啥热闹都凑",
+                desc: "内心没主见别人说啥都信，看到热闹就想凑，别人买啥你买啥别人考啥你考啥，被卖了还在帮别人数钱。不过你非常随和，不管和谁都能相处得很好，而且你适应能力超强，不管在什么环境里都能快速融入，只是得稍微有点自己的主见哦。",
+                core: { Z1: "L", X3: "L", G3: "L", S1: "H" }
+            }
+        ];
+
+        const dimensionNames = {
+            Z1: "自我锚定度", Z2: "自我和解力", Z3: "自我更新欲",
+            G1: "关系松弛感", G2: "情感流通性", G3: "关系距离感",
+            R1: "世界灰度感", R2: "视角转换力", R3: "意义建构力",
+            X1: "内在驱动力", X2: "决断清晰度", X3: "节奏掌控力",
+            S1: "社交能量源", S2: "人际感知力", S3: "表达自然度"
+        };
+
+        let currentQuestion = 0;
+        let scores = { Z1:0, Z2:0, Z3:0, G1:0, G2:0, G3:0, R1:0, R2:0, R3:0, X1:0, X2:0, X3:0, S1:0, S2:0, S3:0 };
+        let radarChart = null;
+
+        function startQuiz() {
+            document.getElementById("start-screen").classList.add("hidden");
+            document.getElementById("quiz-screen").classList.remove("hidden");
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = questions[currentQuestion];
+            document.getElementById("question-count").textContent = `第 ${currentQuestion + 1} / 30 题`;
+            document.getElementById("progress-bar").style.width = `${((currentQuestion + 1)/30)*100}%`;
+            document.getElementById("question-text").textContent = q.text;
+            
+            const optionsContainer = document.getElementById("options-container");
+            optionsContainer.innerHTML = "";
+            
+            q.options.forEach(option => {
+                const btn = document.createElement("button");
+                btn.className = "w-full text-left p-4 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all fade-in";
+                btn.textContent = option.text;
+                btn.onclick = () => selectOption(option.score, q.dimension);
+                optionsContainer.appendChild(btn);
+            });
+
+            const card = document.getElementById("question-card");
+            card.classList.remove("fade-in");
+            void card.offsetWidth;
+            card.classList.add("fade-in");
+        }
+
+        function selectOption(score, dimension) {
+            scores[dimension] += score;
+            currentQuestion++;
+            currentQuestion >= questions.length ? calculateResult() : loadQuestion();
+        }
+
+        function renderRadarChart(scores) {
+            const axisScores = [
+                scores.Z1 + scores.Z2 + scores.Z3,
+                scores.G1 + scores.G2 + scores.G3,
+                scores.R1 + scores.R2 + scores.R3,
+                scores.X1 + scores.X2 + scores.X3,
+                scores.S1 + scores.S2 + scores.S3
+            ];
+            const ctx = document.getElementById('radar-chart').getContext('2d');
+            if (radarChart) radarChart.destroy();
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['自我', '关系', '认知', '行动', '社交'],
+                    datasets: [{
+                        label: '你的属性值',
+                        data: axisScores,
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                        borderColor: 'rgb(249, 115, 22)',
+                        pointBackgroundColor: 'rgb(249, 115, 22)',
+                        pointBorderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { r: { min: 6, max: 18, ticks: { display: false }, pointLabels: { font: { size: 12 } } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderDimensions(dimensions, scores) {
+            const container = document.getElementById("dimensions-container");
+            container.innerHTML = "";
+            const groups = [
+                { name: "Z轴 · 自我内在", dims: ["Z1", "Z2", "Z3"] },
+                { name: "G轴 · 关系互动", dims: ["G1", "G2", "G3"] },
+                { name: "R轴 · 认知视角", dims: ["R1", "R2", "R3"] },
+                { name: "X轴 · 行动模式", dims: ["X1", "X2", "X3"] },
+                { name: "S轴 · 社交存在", dims: ["S1", "S2", "S3"] }
+            ];
+            groups.forEach(group => {
+                const groupTitle = document.createElement("p");
+                groupTitle.className = "text-xs font-medium text-gray-400 mb-2";
+                groupTitle.textContent = group.name;
+                container.appendChild(groupTitle);
+                group.dims.forEach(dimKey => {
+                    const level = dimensions[dimKey];
+                    const score = scores[dimKey];
+                    const dimItem = document.createElement("div");
+                    dimItem.className = "flex items-center justify-between mb-2";
+                    dimItem.innerHTML = `
+                        <div class="flex items-center gap-2 w-2/5">
+                            <span class="text-sm text-gray-700">${dimensionNames[dimKey]}</span>
+                            <span class="text-xs px-1.5 py-0.5 rounded tag-${level}">${level}</span>
+                        </div>
+                        <div class="w-3/5 bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div class="h-full rounded-full tag-${level}" style="width: ${(score/6)*100}%"></div>
+                        </div>
+                    `;
+                    container.appendChild(dimItem);
+                });
+            });
+        }
+
+        function calculateResult() {
+            const dimensions = {};
+            for (const key in scores) {
+                dimensions[key] = scores[key] >=5 ? "H" : scores[key] >=3 ? "M" : "L";
+            }
+
+            // 【关键调整：概率均衡机制】
+            // 1. 先按符合率筛选前5名（符合率=符合数量/总核心数）
+            const validPersonalities = personalities.filter(p => !p.extraCondition || p.extraCondition(dimensions));
+            const candidates = validPersonalities.map(p => {
+                let matchCount = 0;
+                const totalCore = Object.keys(p.core).length;
+                for (const key in p.core) {
+                    if (dimensions[key] === p.core[key]) matchCount++;
+                }
+                const matchRate = matchCount / totalCore;
+                return { ...p, matchRate, matchCount };
+            }).sort((a, b) => b.matchRate - a.matchRate).slice(0, 5);
+
+            // 2. 在前5名中随机抽取1个，大幅增加冷门人格概率
+            const selected = candidates[Math.floor(Math.random() * candidates.length)];
+
+            document.getElementById("quiz-screen").classList.add("hidden");
+            document.getElementById("result-screen").classList.remove("hidden");
+            document.getElementById("result-avatar").textContent = selected.emoji;
+            document.getElementById("result-en-type").textContent = selected.enName;
+            document.getElementById("result-cn-type").textContent = selected.cnName;
+            document.getElementById("result-match").textContent = `匹配度 ${Math.round(selected.matchRate * 100)}%`;
+            document.getElementById("result-remark").textContent = selected.remark;
+            document.getElementById("result-desc").textContent = selected.desc;
+
+            renderRadarChart(scores);
+            renderDimensions(dimensions, scores);
+        }
+
+        function restart() {
+            currentQuestion = 0;
+            scores = { Z1:0, Z2:0, Z3:0, G1:0, G2:0, G3:0, R1:0, R2:0, R3:0, X1:0, X2:0, X3:0, S1:0, S2:0, S3:0 };
+            if (radarChart) radarChart.destroy();
+            document.getElementById("result-screen").classList.add("hidden");
+            document.getElementById("start-screen").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>
